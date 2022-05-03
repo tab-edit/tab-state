@@ -1,0 +1,8 @@
+for each state unit, the principle is that for every node you are listening out for, after your listener 
+for that node has been called, your state has to be correct and appropriate for the context up to and including the node you just listened to.
+
+e.g. the note-distance.ts stateunit might listen out for when we enter each ".Note". after the ".Note" listener is called, your note-distance
+state must have the correct value corresponding to the distance of the .Note you just explored - i.e. your state's value (in this case your distance value) should
+be the distance value for the Note you just explored, and not the distance for a previous Note (i.e. a note in a different sound) that was explored prior, or the distance for the next .Note that is to be explored.
+
+This makes it so that other stateunits can consistently query your stateunit's current value and be assured that it is accurate.
