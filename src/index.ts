@@ -4,47 +4,14 @@ import { Text } from "@codemirror/text";
 import { ASTNode, Cursor, TabTree } from "tab-ast";
 import SafeEmitter from "./event-generator/safe-emitter";
 
-const state = {
-    "namespace": {
-        export: {
+type RuleReducer<S> = (state: S) => S;
+type RuleVisitor<S> = (node: ASTNode) => RuleReducer<S> | void;
 
-        },
-        "field1": {
-
-        },
-        "field2": {
-
-        }
-    }
-}
-
-const lintingState = {
-    "linter": {
-        export: {
-            lintingProblems: Problems[]
-        },
-        "no-spacing": {
-
-        },
-        "linename-present": {
-
-        },
-        middleware: {
-            "linter": () => {
-
-            },
-            "linter:no-spacing linter:linename-present": (newState, statename:string) => {
-
-            }
-        }
-    }
-}
-
-export type StateContext = {
+export type RuleContext = {
     parserOptions:{}//stuff like enforce guitar? stuff like that
     id: string// string? not sure. stateunit's id
     options:{}
-    requestState(namespace:string, field:string): unknown
+    requestRuleState(name:string): any
     getAncestors(): ASTNode[],
     getSourceText(): Text, // TODO: make sure this is the Text class from codemirror6
     getTextFromNode(node: ASTNode): string,
@@ -52,30 +19,28 @@ export type StateContext = {
     dispatchAction(state:any): void
 }
 
-const StateUnitDeclaration = {
-    meta: {
-        namespace: "line-naming"
-    },
-    state: {
-
-    },
-    create: function(context:StateContext) {
-        return {
-            "LineNaming > MeasureLineName": function(node:Readonly<ASTNode>, state: StateUnit) {
-                // let otherstate = context.requestStateData(namespace="dhiofd", field="hioweg") // figures out if you have write access and returns appropriately
-                // if state does not exist, log useful error (inside the requestStateData function obvsly)
-                // 
-                return state //TODO: think is the best way to update state to return it, or to call a function like dispatchStateChange()
-            },
-            onStart: function(/*tree:Readonly<AST>*/, state: StateUnit) {
-
-            },
-            onEnd: function(/*node:Readonly<AST>*/, state: StateUnit) {
-
-            }
-        }
-    }
+export interface CreateRule<
+    RuleState = any,
+    Name extends string = string
+> {
+    /**
+     * The rule's name. Used to namespace the generated action types.
+     */
+    name: Name
+    dependencies?: string[]
+    initialState: RuleState | (() => RuleState)
+    /**
+     * returns an object with methods that tab-state calls to "visit" nodes while traversing the abstract syntax tree and update the state of the rule
+     */
+    createVisitors: (context: RuleContext) => {[selector:string]: RuleVisitor<RuleState>}
 }
+
+function createSlice<RuleState>(
+    options: CreateRule<RuleState>
+) {
+
+}
+
 
 function runStates(tree: TabTree, sourceText: Text) {
     const emitter = new SafeEmitter();
