@@ -3,4 +3,4 @@ A rule-based state manager for the [tab-edit](https://github.com/tab-edit/tab-ed
 
 It makes it possible to easily implement features such as linting or MusicXML generation as a group of "rules" on the tab syntax tree state.
 
-System design inspired by [eslint](https://github.com/eslint/eslint) and [redux](https://github.com/reduxjs/redux)
+System design inspired by [eslint](https://github.com/eslint/eslint)
