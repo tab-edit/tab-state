@@ -1,7 +1,8 @@
 // credit: https://github.com/eslint/eslint/blob/90a5b6b4aeff7343783f85418c683f2c9901ab07/lib/linter/linter.js
 //and https://eslint.org/docs/developer-guide/working-with-rules#contextreport
 import { Text } from "@codemirror/text";
-import { ASTNode, Cursor, TabTree } from "tab-ast";
+import { ASTNode, Cursor, FragmentCursor, TabTree } from "tab-ast";
+import StateReducerEventGenerator from "./event-generator/state-reducer-event-generator";
 import SafeEmitter from "./event-generator/safe-emitter";
 
 // TODO: consider making it optional for rules to be group-agnostic or to tie themselves to a group. 
@@ -53,56 +54,62 @@ type GroupDeclaration<
     rules: string[]
 }
 
+
+/**
+ * Creates a tag for identifying a rule which is under a specific group. 
+ * @param ruleName 
+ * @param groupName 
+ * @returns a string tag for the rule/group combination 
+ */
+function createGroupedRulestateTag(ruleName:string, groupName:string) { return `${ruleName}@group:${groupName}` }
+/**
+ * Creates a tag for a rule which accesses a shared state 
+ * @param ruleName 
+ * @returns a string tag for the rule 
+ */
+function createSharedRulestateTag(ruleName:string) { return `${ruleName}@shared` }
+
+
 function generateState(root: TabTree|ASTNode, sourceText: Text) {
     const emitter = new SafeEmitter();
-    const nodeQueue:{isEntering: boolean, node: Readonly<ASTNode>}[] = [];
-    const tree = root instanceof ASTNode ? new TabTree([]) : root; // TODO: replace new TabTree([]) with producing a TabTree from the root ASTNode
-    let currentNodeCursor = tree.cursor;
+    const reducerEventGenerator = new StateReducerEventGenerator(emitter);
 
+    const tree = root instanceof ASTNode ? new TabTree([]) : root; // TODO: replace new TabTree([]) with producing a TabTree from the root ASTNode
+
+    type TraversalInfo = {isEntering: boolean, node: Readonly<ASTNode>, getCursor: () => FragmentCursor}
+    const nodeQueue:TraversalInfo[] = [];
+    let currentTraversalInfo = {isEntering: false, node: tree.cursor.node, getCursor: () => tree.cursor};
     tree.iterate({
-        enter(node) {
-            nodeQueue.push({ isEntering: true, node });
+        enter(node, getCursor) {
+            nodeQueue.push({ isEntering: true, node, getCursor });
         },
-        leave(node) {
-            nodeQueue.push({ isEntering: false, node })
+        leave(node, getCursor) {
+            nodeQueue.push({ isEntering: false, node, getCursor })
         }
     });
 
     const sharedTraversalContext = Object.freeze({
-        getAncestors: () => Object.freeze(currentNodeCursor.getAncestors()),
+        getAncestors: () => Object.freeze(currentTraversalInfo.getCursor().getAncestors()),
         getSourceText: () => sourceText,
         getTextFromNode: (node:ASTNode) => sourceText.sliceString(node.ranges[0],node.ranges[1]),
-        getCursor: () => currentNodeCursor.fork(),
+        getCursor: () => currentTraversalInfo.getCursor(),
         parserOptions: { }, // TODO: implement this
     });
 
-    type TabRuleObject = {
-        state: any,
-        updatedOnCurrentVisit: StateUpdateStatus,
-        updatedOnAncestorVisit: StateUpdateStatus,
-    }
+    
 
-    /**
-     * The RootState stores the state of all the rules. For some rules, they may have multiple instances of their state.
-     * This may only be the case if a group overrides a rule's default configuration. if that is the case, the group
-     * that overrided the rule's default configuration will have its own separate instance of the rule's state.
-     */
-    type RootState = {
-        sharedRuleStates: {
-            [ruleId:string]: TabRuleObject
-        }
-        [groupId:string]: {
-            [ruleId:string]: TabRuleObject
-        }
-    }; 
-    const state:RootState = {
-        sharedRuleStates: {}
+    const rootState:RootState = {
+        shared: {}
     };
-    const usesSharedState = (ruleId:string, groupId:string) => !state[groupId][ruleId] // it uses a shared state if a separate rule-state object wasn't created for it in this group
-    const getRuleState = (ruleId:string, groupId:string) => usesSharedState(ruleId, groupId) ? state[groupId][ruleId] : state.sharedRuleStates[ruleId];
-    const updateRuleState = (newState:any, ruleId:string, groupId:string) => {
-        if (!usesSharedState(ruleId, groupId)) state[groupId][ruleId] = newState;
-        else if (state.sharedRuleStates[ruleId]) state.sharedRuleStates[ruleId] = newState;
+    const usesSharedState = (ruleName:string, groupName:string) => !rootState[groupName][ruleName] // it uses a shared state if a separate rule-state object wasn't created for it in this group
+    const generateStateTag = (ruleName:string, groupName:string) => usesSharedState(ruleName, groupName) ? createSharedRulestateTag(ruleName) : createGroupedRulestateTag(ruleName, groupName);
+    const resolveState = (stateTag:string) => {
+        
+    }
+    const getRuleState = (ruleName:string, groupName:string) => usesSharedState(ruleName, groupName) ? rootState[groupName][ruleName] : rootState.shared[ruleName];
+    const updateRuleState = (newState:any, ruleName:string, groupName:string) => {
+        if (!usesSharedState(ruleName, groupName)) rootState[groupName][ruleName] = newState;
+        else if (rootState.shared[ruleName]) rootState.shared[ruleName] = newState;
         else return false;
         return true;
     }
@@ -120,11 +127,11 @@ function generateState(root: TabTree|ASTNode, sourceText: Text) {
      */
     type Config = {
         configRules: {
-            [ruleId:string]: any
+            [ruleName:string]: any
         }
         configGroups: {
-            [groupId:string]: {
-                [ruleId:string]: any
+            [groupName:string]: {
+                [ruleName:string]: any
             }
         }
     }
@@ -134,48 +141,50 @@ function generateState(root: TabTree|ASTNode, sourceText: Text) {
         configGroups: {}
     }
 
-    Object.keys(configuredGroups).forEach(groupId => {
-        state[groupId] = {};
-        const group:GroupDeclaration = configuredGroups[groupId];
-        const groupConfig = config.configGroups[groupId] || {};
-        for (const ruleId of group.rules) {
-            const rule:TabRuleDeclaration = ruleMapper(ruleId);
-            if (!rule) throw new Error(`The rule (${ruleId}) declared in the group (${groupId}) could not be found.`)
+    Object.keys(configuredGroups).forEach(groupName => {
+        rootState[groupName] = {};
+        const group:GroupDeclaration = configuredGroups[groupName];
+        const groupConfig = config.configGroups[groupName] || {};
+        for (const ruleName of group.rules) {
+            const rule:TabRuleDeclaration = ruleMapper(ruleName);
+            if (!rule) throw new Error(`The rule ${createGroupedRulestateTag(ruleName, groupName)} could not be found.`)
 
             // initialize rule's state and config
             let ruleConfig:Object;
-            if (ruleId in groupConfig) { // this group probably modifies this rule's config from it's default config
-                state[groupId][ruleId] = rule.initialState();
-                ruleConfig = groupConfig[ruleId];
+            if (ruleName in groupConfig) { // this group probably modifies this rule's config from it's default config
+                rootState[groupName][ruleName] = rule.initialState();
+                ruleConfig = groupConfig[ruleName];
             } else {
-                state.sharedRuleStates[ruleId] = rule.initialState();
-                ruleConfig = config.configRules[ruleId] || {}
+                rootState.shared[ruleName] = rule.initialState();
+                ruleConfig = config.configRules[ruleName] || {}
             }
+            const stateTag = generateStateTag(ruleName, groupName);
 
             const ruleContext:TabRuleContext = Object.freeze(
                 Object.assign(
                     Object.create(sharedTraversalContext),
                     {
-                        id: ruleId,
+                        id: stateTag,
                         config: Object.freeze(ruleConfig),
-                        getCurrentState: () => getRuleState(ruleId, groupId),
+                        getCurrentState: () => getRuleState(stateTag),
                         requestState(name:string) {
-                            if (!(ruleId in group.rules)) throw new Error(`The requested rule-state (${name}) is not a member of the group (${groupId}) of the rule which requested it (${ruleId}).`)
-                            if (!rule.dependencies || !(ruleId in rule.dependencies)) throw new Error(`The requested rule-state (${name}) must be declared as a dependency of the rule which requested it (${ruleId})`)
-                            // TODO: do computation to visit the requested rule and update its state if it is in the visit queue
-                            return getRuleState(ruleId, groupId);
+                            if (!(ruleName in group.rules)) throw new Error(`Cannot retrieve requested rule state. Requested rule '${name}' does not belong to the same group as the requesting rule '${createGroupedRulestateTag(ruleName, groupName)}'.`)
+                            if (!rule.dependencies || !(ruleName in rule.dependencies)) throw new Error(`Cannot retrieve requested rule state. The requested rule '${name}' must be declared as a dependancy of the requesting rule '${ruleName}.`)
+                            reducerEventGenerator.ensureStateListener
+                            return getRuleState(ruleName, groupName);
                         }
                     }
                 )
             )
 
+            // initialize rule listeners for this rule, as well as its state
             let ruleListeners: ReturnType<typeof createRuleListeners> = {};
-            if(usesSharedState(ruleId, groupId)) {
-                if (!attachedSharedListeners.has(ruleId)) { //prevent attaching redundant rule listeners for shared states
-                    ruleListeners = createRuleListeners(rule, ruleContext, groupId);
-                    attachedSharedListeners.add(ruleId);
+            if(usesSharedState(ruleName, groupName)) {
+                if (!attachedSharedListeners.has(ruleName)) { //prevent attaching redundant rule listeners for shared states
+                    ruleListeners = createRuleListeners(rule, ruleContext, groupName);
+                    attachedSharedListeners.add(ruleName);
                 }
-            } else ruleListeners = createRuleListeners(rule, ruleContext, groupId);
+            } else ruleListeners = createRuleListeners(rule, ruleContext, groupName);
 
 
             Object.keys(ruleListeners).forEach(selector => {
@@ -188,16 +197,29 @@ function generateState(root: TabTree|ASTNode, sourceText: Text) {
         }
     })
 
-    const eventGenerator = NodeEventGenerator()
+    nodeQueue.forEach(traversalInfo => {
+        currentTraversalInfo = traversalInfo;
+        try {
+            if (traversalInfo.isEntering) {
+                const cursor = traversalInfo.getCursor(); cursor.parent();
+                const parent = cursor.node;
+                reducerEventGenerator.enterNode(traversalInfo.node, parent);
+            } else {
+                reducerEventGenerator.leaveNode(traversalInfo.node);
+            }
+        } catch (err) {
+            throw err;
+        }
+    })
 
 
 }
 
-function createRuleListeners(rule: TabRuleDeclaration, ruleContext:TabRuleContext, groupId: string) {
+function createRuleListeners(rule: TabRuleDeclaration, ruleContext:TabRuleContext, ruleStateTag:string) {
     try {
         return rule.createVisitors(ruleContext);
     } catch (ex:any) {
-        ex.message = `Error while loading rule '${ruleContext.id}' of group ${groupId}`
+        ex.message = `Error while loading rule '${ruleTag}'`
         throw ex;
     }
 }

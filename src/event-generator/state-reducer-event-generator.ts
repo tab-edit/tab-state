@@ -3,7 +3,10 @@ import { ASTNode } from "tab-ast";
 import { ASTSelector, compareSpecificity, matches, parseSelector } from "./ast-selector";
 import SafeEmitter from "./safe-emitter";
 
-class NodeEventGenerator {
+/**
+ * A Node Event Generator whose listeners produce state reducers.
+ */
+export default class StateReducerEventGenerator {
     private emitter:SafeEmitter;
     private currentAncestry: ASTNode[];
     private enterSelectorsByNodeType: Map<string, ASTSelector[]>;
