@@ -6,7 +6,7 @@ import SafeEmitter from "./safe-emitter";
 /**
  * A Node Event Generator whose listeners produce state reducers.
  */
-export default class StateReducerEventGenerator {
+export default class NodeEventGenerator {
     private emitter:SafeEmitter;
     private currentAncestry: ASTNode[];
     private enterSelectorsByNodeType: Map<string, ASTSelector[]>;

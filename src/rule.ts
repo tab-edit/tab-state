@@ -1,12 +1,13 @@
 import { ASTNode, Cursor } from "tab-ast";
-import { State } from "./state";
+import { State } from "./state-manager";
 
 export type RuleContext = {
-    parserOptions:Object //stuff like enforce guitar? stuff like that
     id: string// string? not sure. stateunit's id
-    config:Object
-    getCurrentState(): State
-    requestState(name:string): State
+    config: any
+    languageOptions:Object //stuff like enforce guitar? stuff like that
+    getState(): any
+    setState(value:any): void // TODO: setState is used so the program can internally track whether the state was updated upon visiting the current node or upon visiting an ancestor node.
+    requestExternalState(ruleId:string): State | undefined
     getAncestors(): ASTNode[],
     getSourceText(): Text, // TODO: make sure this is the Text class from codemirror6
     getTextFromNode(node: ASTNode): string,
@@ -14,8 +15,7 @@ export type RuleContext = {
 }
 
 
-type Reducer<S> = (state: S) => S;
-type RuleVisitor<S> = (node: ASTNode) => Reducer<S> | void;
+type RuleVisitor = (node: ASTNode) => void
 export interface Rule<
     StateValue = any,
     Name extends string = string
@@ -35,6 +35,6 @@ export interface Rule<
     /**
      * Creates visitors that are called while traversing the tab abstract syntax tree (AST) and that return a state-reducer which is used to update the rule's state.
      */
-    createVisitors(context: RuleContext): {[selector:string]: RuleVisitor<StateValue>}
+    createVisitors(context: RuleContext): {[selector:string]: RuleVisitor}
 }
 
