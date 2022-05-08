@@ -89,7 +89,7 @@ function generateState(root: TabTree|ASTNode, sourceText: Text, configuredGroups
                             if (!externalStateTag) throw new Error(`Error when trying to retrieve external state ${requestedRuleId} from group ${groupId}.`)
 
                             // prioritize listeners associated with this state to make sure the state is not stale.
-                            eventGenerator.prioritizeListenerGroup(externalStateTag);
+                            eventGenerator.ensureEventGroupEmitted(externalStateTag);
                             // TODO: if (xxx) throw new Error(`Circular dependency found: ${stateTag}`)
                             return stateManager.resolveState(externalStateTag);
                         }
@@ -103,7 +103,12 @@ function generateState(root: TabTree|ASTNode, sourceText: Text, configuredGroups
                 emitter.on(
                     selector,
                     ruleListener,
-                    stateTag
+                    /* 
+                     * group events by ruleId. this makes it so we can emit
+                     * them in correct order based on their rule dependencies 
+                     * using topological sort.
+                     */
+                    ruleId 
                 )
             })
             attachedListenerGroups.add(stateTag)

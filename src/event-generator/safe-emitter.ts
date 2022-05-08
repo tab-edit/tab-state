@@ -1,5 +1,6 @@
 // credit https://github.com/eslint/eslint/blob/90a5b6b4aeff7343783f85418c683f2c9901ab07/lib/linter/safe-emitter.js
-type Listener = {callback: Function, group: string}
+type Listener = {callback: Function, eventGroup: string}
+export type DelayedEmission = {emit: () => void, eventName: string, eventGroup: string}
  
  /**
   * Creates an object which can listen for and emit events.
@@ -16,8 +17,8 @@ type Listener = {callback: Function, group: string}
     private listeners:{[eventName:string]: Listener[]} = Object.create(null);
 
     // Adds a listener for a given event name
-    on(eventName:string, callback:Function, group: string) {
-        const listener = {callback, group}
+    on(eventName:string, callback:Function, eventGroup: string) {
+        const listener = {callback, eventGroup}
         if (eventName in this.listeners) {
             this.listeners[eventName].push(listener);
         } else {
@@ -27,15 +28,24 @@ type Listener = {callback: Function, group: string}
 
     // Emits an event with a given name. This calls all the listeners that were listening for that name, with `arg1`, `arg2`, and `arg3` as arguments.
     emit(eventName:string, ...args:any[]) {
-        if (eventName in this.listeners) return;
-        const groupedCallbacks:{[group:string]: Function[]} = {};
-        this.listeners[eventName].forEach(listener => {
-            if (listener.group in groupedCallbacks) grouped
-        });
+        if (eventName in this.listeners) {
+            this.listeners[eventName].forEach(listener => listener.callback(...args))
+        }
+    }
+
+    generateDelayedEmissions(eventName:string, ...args:any[]): DelayedEmission[] {
+        if (!(eventName in this.listeners)) return [];
+        return this.listeners[eventName].map(listener => {
+            return {
+                emit: () => listener.callback(...args), 
+                eventName,
+                eventGroup: listener.eventGroup
+            }
+        })
     }
 
     // Gets the list of event names that have registered listeners.
     eventNames() {
         return Object.keys(this.listeners);
     }
- }
+}
