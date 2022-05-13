@@ -5,8 +5,7 @@ export type State<
 > = {
     value: StateValue,
     config: StateConfig,
-    updatedOnCurrentVisit: "stale" | VisitType,
-    updatedOnAncestorVisit: "stale" | VisitType,
+    lastUpdate: {nodeHash: string, type: VisitType} | null
 }
 
 /**
@@ -35,16 +34,15 @@ export class StateManager {
      * @param initialState a function that returns the initial state value
      * @returns the tag used to access this state
      */
-    public initSharedState(ruleId:string, config: any, initialState: () => any, ignoreDuplicateInit: boolean = false): string {
+    public initSharedState(ruleId:string, config: any, initialState: () => any, ignoreErrorOnDuplicateInit: boolean = false): string {
         const state: State = {
             value: initialState(),
             config,
-            updatedOnCurrentVisit: "stale",
-            updatedOnAncestorVisit: "stale"
+            lastUpdate: null
         }
         const stateTag = this.generateStateTag(ruleId);
         if (ruleId in this.rootState.shared) {
-            if (ignoreDuplicateInit) return stateTag;
+            if (ignoreErrorOnDuplicateInit) return stateTag;
             throw new Error(`Cannot initialize existing state '${stateTag}'.`);
         } 
         this.rootState.shared[ruleId] = state;
@@ -59,16 +57,15 @@ export class StateManager {
      * @param initialState a function that returns the initial state value
      * @returns the tag used to access the initialized state
      */
-    public initState(ruleId:string, groupId:string, config: any, initialState: () => any, ignoreDuplicateInit: boolean = false) {
+    public initState(ruleId:string, groupId:string, config: any, initialState: () => any, ignoreErrorOnDuplicateInit: boolean = false) {
         const state: State = {
             value: initialState(),
             config,
-            updatedOnCurrentVisit: "stale",
-            updatedOnAncestorVisit: "stale"
+            lastUpdate: null
         }
         const stateTag = this.generateStateTag(ruleId, groupId);
         if (groupId in this.rootState && ruleId in this.rootState[groupId]) {
-            if (ignoreDuplicateInit) return stateTag;
+            if (ignoreErrorOnDuplicateInit) return stateTag;
             throw new Error(`Cannot initialize existing state '${stateTag}'.`)
         }
         this.rootState[groupId][ruleId] = state;

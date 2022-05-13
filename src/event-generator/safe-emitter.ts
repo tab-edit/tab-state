@@ -1,6 +1,6 @@
 // credit https://github.com/eslint/eslint/blob/90a5b6b4aeff7343783f85418c683f2c9901ab07/lib/linter/safe-emitter.js
 type Listener = {callback: Function, eventGroup: string}
-export type DelayedEmission = {emit: () => void, eventName: string, eventGroup: string}
+export type DeferredEmission = {emit: () => void, eventName: string, eventGroup: string}
  
  /**
   * Creates an object which can listen for and emit events.
@@ -33,7 +33,7 @@ export type DelayedEmission = {emit: () => void, eventName: string, eventGroup: 
         }
     }
 
-    generateDelayedEmissions(eventName:string, ...args:any[]): DelayedEmission[] {
+    generateDeferredEmissions(eventName:string, ...args:any[]): DeferredEmission[] {
         if (!(eventName in this.listeners)) return [];
         return this.listeners[eventName].map(listener => {
             return {

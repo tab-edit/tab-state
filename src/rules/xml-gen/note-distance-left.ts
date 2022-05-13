@@ -1,3 +1,43 @@
+import { Text } from "@codemirror/text";
+import { FragmentCursor, SourceSyntaxNodeTypes } from "tab-ast";
+import { RuleModule } from "../../rule";
+
+type NoteDistanceState = {
+    toMeasure: number,
+    toSound: number
+}
+
+export default {
+    name: "note-distance-left",
+    dependencies: [],
+    initialState: () => ({
+        toMeasure: 0,
+        toSound: 0
+    }),
+    createVisitors: function(context) {
+        let measureStartCol: {[lineNum:number]: number} = {}
+        return {
+            "Measure": function(node) {
+                measureStartCol = {};
+                const measurelines = context.getCursor().sourceSyntaxNodes()[SourceSyntaxNodeTypes.MeasureLine];
+                measurelines.map((mline) => {
+                    const pos = getPositionDescriptor(mline.from, context.getSourceText());
+                    measureStartCol[pos.line] = pos.col;
+                })
+            }
+        }
+    }
+} as RuleModule<NoteDistanceState>;
+
+function getPositionDescriptor(pos:number, text:Text): {line: number, col: number} {
+    const line = text.lineAt(pos);
+
+    return {
+        line: line.number,
+        col: pos - line.from
+    }
+}
+
 // import { ASTNode } from "tab-ast";
 // import { CreateRule, StateContext } from "../..";
 

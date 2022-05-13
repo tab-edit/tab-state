@@ -1,7 +1,7 @@
 // credit: https://github.com/eslint/eslint/blob/90a5b6b4aeff7343783f85418c683f2c9901ab07/lib/linter/node-event-generator.js
 import { ASTNode } from "tab-ast";
 import { ASTSelector, compareSpecificity, matches, parseSelector } from "./ast-selector";
-import SafeEmitter, { DelayedEmission, Listener } from "./safe-emitter";
+import SafeEmitter, { DeferredEmission } from "./safe-emitter";
 
 /**
  * A Node Event Generator whose listeners produce state reducers.
@@ -56,9 +56,9 @@ export default class NodeEventGenerator {
     /**
      * Checks a selector against a node, and creates an emission list that can be used for delayed emission of the selector
      */
-     applySelector(node: ASTNode, selector: ASTSelector): DelayedEmission[] {
+     applySelector(node: ASTNode, selector: ASTSelector): DeferredEmission[] {
         if (matches(node, selector.parsedSelector, this.currentAncestry)) {
-            return this.emitter.generateDelayedEmissions(selector.rawSelector, node);
+            return this.emitter.generateDeferredEmissions(selector.rawSelector, node);
         }
         return [];
     }
@@ -66,11 +66,11 @@ export default class NodeEventGenerator {
     /**
      * Applies all appropriate selectors to a node, in specificity order
      */
-    applySelectors(node: ASTNode, isExit: boolean): DelayedEmission[] {
+    applySelectors(node: ASTNode, isExit: boolean): DeferredEmission[] {
         const selectorsByNodeType = (isExit ? this.exitSelectorsByNodeType : this.enterSelectorsByNodeType).get(node.name) || [];
         const anyTypeSelectors = isExit ? this.anyTypeExitSelectors : this.anyTypeEnterSelectors;
 
-        const delayedEmissions:DelayedEmission[] = []
+        const deferredEmissions:DeferredEmission[] = []
         /*
          * selectorsByNodeType and anyTypeSelectors were already sorted by specificity in the constructor.
          * Iterate through each of them, applying selectors in the right order.
@@ -84,12 +84,12 @@ export default class NodeEventGenerator {
                 anyTypeSelectorsIndex < anyTypeSelectors.length &&
                 compareSpecificity(anyTypeSelectors[anyTypeSelectorsIndex], selectorsByNodeType[selectorsByTypeIndex]) < 0
             ) {
-                delayedEmissions.concat(this.applySelector(node, anyTypeSelectors[anyTypeSelectorsIndex++]));
+                deferredEmissions.concat(this.applySelector(node, anyTypeSelectors[anyTypeSelectorsIndex++]));
             } else {
-                delayedEmissions.concat(this.applySelector(node, selectorsByNodeType[selectorsByTypeIndex++]));
+                deferredEmissions.concat(this.applySelector(node, selectorsByNodeType[selectorsByTypeIndex++]));
             }
         }
-        return delayedEmissions;
+        return deferredEmissions;
     }
 
     /**
@@ -100,15 +100,28 @@ export default class NodeEventGenerator {
             this.currentAncestry.unshift(parent);
         }
         // sort the delayed emissions by rule
-        this.applySelectors(node, false).sort(())
+        emitInRuleOrder(this.applySelectors(node, false));
     }
     
     /**
      * Emits an event of leaving AST node.
      */
     leaveNode(node: ASTNode): void {
-        this.delayedEmitter = new DelayedEventEmitter(this.applySelectors(node, true));
-        this.delayedEmitter.beginEmission();
+        emitInRuleOrder(this.applySelectors(node, true));
         this.currentAncestry.shift();
     }
+}
+
+
+function emitInRuleOrder(deferredEmissions: DeferredEmission[]) {
+    const groupedDeferredEmissions:{[group:string]: DeferredEmission[]} = {};
+    deferredEmissions.forEach(emission => {
+        if (emission.eventGroup in groupedDeferredEmissions) groupedDeferredEmissions[emission.eventGroup].push(emission);
+        else groupedDeferredEmissions[emission.eventGroup] = [emission];
+    })
+
+    const ruleOrder = getTopologicallySortedRuleList();
+    ruleOrder.forEach(ruleId => {
+        groupedDeferredEmissions[ruleId].forEach(emission => emission.emit());
+    })
 }
