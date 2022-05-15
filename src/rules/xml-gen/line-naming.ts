@@ -1,7 +1,6 @@
-import { ASTNode } from "tab-ast";
-import { RuleModule, RuleContext } from "../../rule";
+import { RuleModule } from "../../rules";
 
-type LineNamingState = {
+export type LineNamingState = {
     naming: Map<number, string>
     numberingRel2Abs: Map<number, number>
 }
@@ -25,7 +24,7 @@ export default {
             "LineNaming > MeasureLineName": function(node) {
                 let state = context.getState();
                 
-                let lineName = context.getTextFromNode(node).replace(/\s/g,'');;
+                let lineName = context.getTextFromNode(node).replace(/\s/g,'');
                 let lineNumber = context.getSourceText().lineAt(node.ranges[0]).number;
 
                 if (state.naming.has(lineNumber)) {

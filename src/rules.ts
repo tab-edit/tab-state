@@ -1,23 +1,22 @@
 import { Text } from "@codemirror/text";
-import { ASTNode, FragmentCursor } from "tab-ast";
+import { ResolvedASTNode } from "tab-ast";
 import { State } from "./state-manager";
-import builtInRules from "./rules"
+import builtInRules from "./rules/";
 
 export type RuleContext<StateValue=any> = {
     id: string
     config: any
     languageOptions:Object //stuff like "guitar, drum, auto" and other tablature-scope language settings.
     getState(): StateValue
-    setState(reducer:(oldValue: StateValue) => StateValue): void // TODO: setState is used so the program can internally track whether the state was updated upon visiting the current node or upon visiting an ancestor node.
+    setState(reducer:(oldValue: StateValue) => StateValue): void
     requestExternalState(ruleId:string): State | undefined
-    getAncestors(): ASTNode[],
+    getAncestors(): ResolvedASTNode[],
     getSourceText(): Text,
-    getTextFromNode(node: ASTNode): string,
-    getCursor(): FragmentCursor,
+    getTextFromNode(node: ResolvedASTNode): string,
 }
 
 
-type RuleVisitor = (node: ASTNode) => void
+type RuleVisitor = (node: ResolvedASTNode) => void
 export interface RuleModule<
     StateValue = any,
     Name extends string = string
@@ -40,6 +39,7 @@ export interface RuleModule<
     createVisitors(context: RuleContext<StateValue>): {[selector:string]: RuleVisitor}
 }
 
+// credit: https://github.com/eslint/eslint/blob/main/lib/linter/rules.js
 export class Rules {
     private rules: {[ruleId:string]: RuleModule}
     constructor() {
@@ -48,13 +48,17 @@ export class Rules {
     /**
      * Registers a rule module for rule id in storage.
      * @param ruleId Rule id.
-     * @param ruleModule Rule handler.
+     * @param ruleModule Rule Module.
      */
     define(ruleId:string, ruleModule: RuleModule) {
         this.rules[ruleId] = ruleModule;
     }
 
-
+    /**
+     * Access Rule Module by id.
+     * @param ruleId Rule id.
+     * @returns A Rule Module.
+     */
     get(ruleId:string) {
        if (this.rules[ruleId]) {
            return this.rules[ruleId];
@@ -64,4 +68,15 @@ export class Rules {
        return null;
     }
 
+    *[Symbol.iterator]() {
+        yield *builtInRules;
+
+        for (const ruleId of Object.keys(this.rules)) {
+            yield [ruleId, this.get(ruleId)];
+        }
+    }
+
+    ruleIds() {
+        return [...builtInRules.keys(), ...Object.keys(this.rules)]
+    }
 }

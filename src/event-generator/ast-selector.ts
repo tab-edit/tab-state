@@ -1,6 +1,6 @@
 // credit https://github.com/estools/esquery/blob/master/esquery.js
 // and https://github.com/eslint/eslint/blob/90a5b6b4aeff7343783f85418c683f2c9901ab07/lib/linter/node-event-generator.js
-import { ASTNode } from 'tab-ast';
+import { ResolvedASTNode } from 'tab-ast';
 
 const parsel = require('parsel-js');
 
@@ -51,9 +51,9 @@ const selectorCache = new Map<string, ASTSelector>();
 }
 
 export function matches(
-    node: ASTNode,
+    node: ResolvedASTNode,
     selector: any,
-    ancestry: ASTNode[]
+    ancestry: ResolvedASTNode[]
 ): any {
     if (!selector) return false;
     if (!node) return false;

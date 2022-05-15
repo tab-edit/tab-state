@@ -1,5 +1,5 @@
 // credit: https://github.com/eslint/eslint/blob/90a5b6b4aeff7343783f85418c683f2c9901ab07/lib/linter/node-event-generator.js
-import { ASTNode } from "tab-ast";
+import { ResolvedASTNode } from "tab-ast";
 import { ASTSelector, compareSpecificity, matches, parseSelector } from "./ast-selector";
 import SafeEmitter, { DeferredEmission } from "./safe-emitter";
 
@@ -8,7 +8,7 @@ import SafeEmitter, { DeferredEmission } from "./safe-emitter";
  */
 export default class NodeEventGenerator {
     private emitter:SafeEmitter;
-    private currentAncestry: ASTNode[];
+    private currentAncestry: ResolvedASTNode[];
     private enterSelectorsByNodeType: Map<string, ASTSelector[]>;
     private exitSelectorsByNodeType: Map<string, ASTSelector[]>;
     private anyTypeEnterSelectors: ASTSelector[];
@@ -56,7 +56,7 @@ export default class NodeEventGenerator {
     /**
      * Checks a selector against a node, and creates an emission list that can be used for delayed emission of the selector
      */
-     applySelector(node: ASTNode, selector: ASTSelector): DeferredEmission[] {
+     applySelector(node: ResolvedASTNode, selector: ASTSelector): DeferredEmission[] {
         if (matches(node, selector.parsedSelector, this.currentAncestry)) {
             return this.emitter.generateDeferredEmissions(selector.rawSelector, node);
         }
@@ -66,7 +66,7 @@ export default class NodeEventGenerator {
     /**
      * Applies all appropriate selectors to a node, in specificity order
      */
-    applySelectors(node: ASTNode, isExit: boolean): DeferredEmission[] {
+    applySelectors(node: ResolvedASTNode, isExit: boolean): DeferredEmission[] {
         const selectorsByNodeType = (isExit ? this.exitSelectorsByNodeType : this.enterSelectorsByNodeType).get(node.name) || [];
         const anyTypeSelectors = isExit ? this.anyTypeExitSelectors : this.anyTypeEnterSelectors;
 
@@ -95,7 +95,7 @@ export default class NodeEventGenerator {
     /**
      * Emits an event of entering AST node.
      */
-    enterNode(node: ASTNode, parent: ASTNode): void {
+    enterNode(node: ResolvedASTNode, parent: ResolvedASTNode): void {
         if (parent) {
             this.currentAncestry.unshift(parent);
         }
@@ -106,7 +106,7 @@ export default class NodeEventGenerator {
     /**
      * Emits an event of leaving AST node.
      */
-    leaveNode(node: ASTNode): void {
+    leaveNode(node: ResolvedASTNode): void {
         emitInRuleOrder(this.applySelectors(node, true));
         this.currentAncestry.shift();
     }
