@@ -14,7 +14,8 @@
     "@codemirror/text": "^0.19.6",
     "deasync": "^0.1.26",
     "parsel-js": "^1.0.2",
-    "tab-ast": "github:tab-edit/tab-ast"
+    "tab-ast": "github:tab-edit/tab-ast",
+    "ts-priority-queue": "^0.1.1"
   },
   "devDependencies": {
     "@types/deasync": "^0.1.2",

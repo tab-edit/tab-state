@@ -1,5 +1,5 @@
 // credit: https://github.com/eslint/eslint/blob/90a5b6b4aeff7343783f85418c683f2c9901ab07/lib/linter/node-event-generator.js
-import { ResolvedASTNode } from "tab-ast";
+import { ResolvedASTNode } from "tab-ast"
 import { ASTSelector, compareSpecificity, matches, parseSelector } from "./ast-selector";
 import SafeEmitter, { DeferredEmission } from "./safe-emitter";
 

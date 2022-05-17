@@ -3,12 +3,15 @@ import LazyLoadingRuleMap from "./utils/lazy-loading-rule-map";
 import deasync from "deasync";
 
 export const builtInRules = new LazyLoadingRuleMap(Object.entries({
-    "line-naming": () => syncImport("./xml-gen/line-naming"),
-    "sound-distance": () => syncImport("./xml-gen/sound-distance")
+    "line-naming":      () => sync(import("./xml-gen/line-naming")),
+    "line-number":      () => sync(import("./xml-gen/line-number")),
+    "note-distance":    () => sync(import("./xml-gen/note-distance")),
+    "measure-count":    () => sync(import("./xml-gen/measure-count")),
+    "overhead-repeats":          () => sync(import("./xml-gen/overhead-repeats"))
 }));
 export default builtInRules;
 
 
-function syncImport(module:string) {
-    return deasync<RuleModule>(async () => await import(module))();
+function sync(promise: Promise<any>) {
+    return deasync<RuleModule>(async () => await promise)();
 }

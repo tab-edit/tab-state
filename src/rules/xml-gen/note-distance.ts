@@ -1,6 +1,7 @@
 import { Text } from "@codemirror/text";
 import { SourceSyntaxNodeTypes } from "tab-ast";
 import { RuleModule } from "../../rules";
+import { getPositionDescriptor } from "../utils/util-functions";
 
 export type NoteDistanceState = {
     toMeasureStart: number,
@@ -15,25 +16,28 @@ export default {
         toSound: 0
     }),
     createVisitors: function(context) {
-        // unexposed (private) state should be stored here
         let measureStartCol: {[lineNum:number]: number} = {}
         let prevSoundStartCol: {[lineNum:number]: number} = {}
         return {
-            "Measure": function(node) {
+            Measure: function(node) {
                 measureStartCol = {};
                 const measurelines = node.sourceSyntaxNodes()[SourceSyntaxNodeTypes.MeasureLine];
                 measurelines.map((mline) => {
-                    const pos = getPositionDescriptor(mline.from, context.getSourceText());
+                    const pos = getPositionDescriptor(mline.from, context);
                     measureStartCol[pos.line] = pos.col;
                 })
                 prevSoundStartCol = measureStartCol
             },
-            "Sound": function(node) {
+            Sound: function(node) {
                 let distanceToPrevSound: number;
                 let distanceToMeasureStart: number;
+                // TODO: don't use the sound's ranges because that might 
+                // be inconsistent with the actual range of the notes in the sound.
+                // Think of a grace note g7 which might be in the sound. we wanna use the
+                // position of the fret 7, not the grace marking.
                 node.ranges.forEach((pos, idx) => {
                     if (idx%2!==0) return;
-                    const posDesc = getPositionDescriptor(pos, context.getSourceText());
+                    const posDesc = getPositionDescriptor(pos, context);
 
                     const distToPrevSoundTmp = posDesc.col-prevSoundStartCol[posDesc.line];
                     distanceToPrevSound = distanceToPrevSound ? Math.max(distanceToPrevSound, distToPrevSoundTmp) : distToPrevSoundTmp;
@@ -52,12 +56,3 @@ export default {
         }
     }
 } as RuleModule<NoteDistanceState>;
-
-function getPositionDescriptor(pos:number, text:Text): {line: number, col: number} {
-    const line = text.lineAt(pos);
-
-    return {
-        line: line.number,
-        col: pos - line.from
-    }
-}

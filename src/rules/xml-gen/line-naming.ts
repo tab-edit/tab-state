@@ -1,54 +1,41 @@
 import { RuleModule } from "../../rules";
+import { getPositionDescriptor, getTextFromNode } from "../utils/util-functions";
 
 export type LineNamingState = {
-    naming: Map<number, string>
-    numberingRel2Abs: Map<number, number>
+    doclineToName: Map<number, string>
 }
 
 export default {
     name: "line-naming",
     dependencies: [],
     initialState: () => ({
-        naming: new Map(),
-        numberingRel2Abs: new Map()
+        doclineToName: new Map(),
     }),
     createVisitors: function(context) {
         return {
-            "LineNaming": function() {
+            LineNaming: function() {
                 // reset line naming
                 context.setState(() => ({
-                    naming: new Map<number, string>(),
-                    numberingRel2Abs: new Map<number, number>()
+                    doclineToName: new Map<number, string>(),
                 }));
             },
             "LineNaming > MeasureLineName": function(node) {
                 let state = context.getState();
                 
-                let lineName = context.getTextFromNode(node).replace(/\s/g,'');
-                let lineNumber = context.getSourceText().lineAt(node.ranges[0]).number;
+                let lineName = getTextFromNode(node, context)[0].replace(/\s/g,'');
+                let doclineNum = getPositionDescriptor(node.ranges[0], context).line;
 
-                if (state.naming.has(lineNumber)) {
-                    console.error("multiple line names on a single line for a measure. figure out where the bug is from.")
+                if (state.doclineToName.has(doclineNum)) {
+                    context.reportError("multiple line names on a single line for a measure. figure out where the bug is from.")
                     return;
                 }
 
-                state.naming.set(lineNumber, lineName)
+                state.doclineToName.set(doclineNum, lineName)
 
                 context.setState((state) => {
-                    state.naming.set(lineNumber, lineName);
+                    state.doclineToName.set(doclineNum, lineName);
                     return state;
                 });
-            },
-            "LineNaming:exit": function() {
-                let state = context.getState();
-                let absNumberingArr:number[] = []
-                for (let key of state.naming.keys()) {
-                    absNumberingArr.push(key);
-                }
-                context.setState((state) => {
-                    absNumberingArr.sort().map((val, idx) => state.numberingRel2Abs.set(idx, val));
-                    return state;
-                })
             }
         }
     }

@@ -17,22 +17,22 @@ type Config = {
 }
 
 // TODO: generateState should be called with an EditorState as a parameter instead of TabTree, i think
-function generateState(editorState:EditorState, configuredGroups: , config: Config) {
+function generateState(editorState:EditorState, configuredGroups: , providedConfig: Config) {
     const stateManager = new StateManager();
     const emitter = new SafeEmitter();
 
     const tree = tabSyntaxTree(editorState);
 
     // generate a queue containing node traversal info
-    type TraversalInfo = {isEntering: boolean, cursor: TabTreeCursor};
+    type TraversalInfo = {isEntering: boolean, node: ResolvedASTNode};
     const nodeQueue:TraversalInfo[] = [];
-    let currentTraversalInfo:TraversalInfo = {isEntering: false, cursor: tree.cursor};
+    let currentTraversalInfo:TraversalInfo = {isEntering: false, node: tree.cursor.node};
     tree.iterate({
-        enter(_, cursor) {
-            nodeQueue.push({ isEntering: true, cursor });
+        enter(node) {
+            nodeQueue.push({ isEntering: true, node });
         },
-        leave(_, cursor) {
-            nodeQueue.push({ isEntering: false, cursor })
+        leave(node) {
+            nodeQueue.push({ isEntering: false, node })
         }
     });
 
@@ -42,9 +42,8 @@ function generateState(editorState:EditorState, configuredGroups: , config: Conf
      * properties once for each rule.
      */
     const sharedTraversalContext = Object.freeze({
-        getAncestors: () => Object.freeze(currentTraversalInfo.cursor.getAncestors()),
+        getAncestors: () => Object.freeze(currentTraversalInfo.node.getAncestors()),
         getSourceText: () => editorState.doc,
-        getTextFromNode: (node:ResolvedASTNode) => editorState.doc.sliceString(node.ranges[0],node.ranges[1]),
         languageOptions: { }, // TODO: implement this
     });
 
@@ -58,13 +57,15 @@ function generateState(editorState:EditorState, configuredGroups: , config: Conf
         for (const ruleId of group.rules) {
             const rule:RuleModule = ruleMapper(ruleId);
             if (!rule) throw new Error(`The rule ${ruleId}, declared as part of the group ${groupId}, could not be found.`)
-            const defaultConfigOverridden = config[groupId] && (ruleId in config[groupId]);
+            const defaultConfigOverridden = providedConfig[groupId] && (ruleId in providedConfig[groupId]);
 
             let stateTag:string;
             if (defaultConfigOverridden) {
-                stateTag = stateManager.initState(ruleId, groupId, config[groupId][ruleId], rule.initialState)
+                const config = {...(rule.defaultConfig || {}), ...providedConfig[groupId][ruleId]}
+                stateTag = stateManager.initState(ruleId, groupId, config, rule.initialState)
             } else {
-                stateTag = stateManager.initSharedState(ruleId, config.default[ruleId], rule.initialState, true);
+                const config = {...(rule.defaultConfig || {}), ...(providedConfig.default[ruleId] || {})}
+                stateTag = stateManager.initSharedState(ruleId, config, rule.initialState, true);
             }
             const {state} = stateManager.resolveState(stateTag);
 
@@ -78,7 +79,7 @@ function generateState(editorState:EditorState, configuredGroups: , config: Conf
                         setState(reducer: (oldValue:any)=>any) {
                             state.value = reducer(state.value);
                             state.lastUpdate = {
-                                nodeHash: currentTraversalInfo.cursor.node.hash(),
+                                nodeHash: currentTraversalInfo.node.hash(),
                                 type: currentTraversalInfo.isEntering ? "onentry" : "onexit"
                             }
                         },
@@ -89,6 +90,12 @@ function generateState(editorState:EditorState, configuredGroups: , config: Conf
                             const externalStateTag = stateManager.resolveStateTag(requestedRuleId, groupId)
                             if (!externalStateTag) throw new Error(`Error when trying to retrieve external state ${requestedRuleId} from group ${groupId}.`);
                             return stateManager.resolveState(externalStateTag);
+                        },
+                        reportError: (msg: string) => {
+                            console.error(`Error when evaluating rule state '${stateTag}': ${msg}`);
+                        },
+                        reportWarning: (msg: string) => {
+                            console.warn(`Warning when evaluating rule state '${stateTag}': ${msg}`);
                         }
                     }
                 )
@@ -117,11 +124,9 @@ function generateState(editorState:EditorState, configuredGroups: , config: Conf
         currentTraversalInfo = traversalInfo;
         try {
             if (traversalInfo.isEntering) {
-                const cursor = traversalInfo.cursor.fork(); cursor.parent();
-                const parent = cursor.node;
-                eventGenerator.enterNode(traversalInfo.cursor.node, parent);
+                eventGenerator.enterNode(traversalInfo.node, traversalInfo.node.parent());
             } else {
-                eventGenerator.leaveNode(traversalInfo.cursor.node);
+                eventGenerator.leaveNode(traversalInfo.node);
             }
         } catch (err) {
             throw err;

@@ -3,32 +3,37 @@ import { ResolvedASTNode } from "tab-ast";
 import { State } from "./state-manager";
 import builtInRules from "./rules/";
 
-export type RuleContext<StateValue=any> = {
+export type RuleContext<StateValue=any, RuleConfig=any> = {
     id: string
-    config: any
+    config: RuleConfig
     languageOptions:Object //stuff like "guitar, drum, auto" and other tablature-scope language settings.
     getState(): StateValue
     setState(reducer:(oldValue: StateValue) => StateValue): void
     requestExternalState(ruleId:string): State | undefined
-    getAncestors(): ResolvedASTNode[],
-    getSourceText(): Text,
-    getTextFromNode(node: ResolvedASTNode): string,
+    getAncestors(): ResolvedASTNode[]
+    getSourceText(): Text
+    reportError(message:string): void
+    reportWarning(message:string): void
 }
 
 
 type RuleVisitor = (node: ResolvedASTNode) => void
 export interface RuleModule<
     StateValue = any,
-    Name extends string = string
+    Config = any
 > {
     /**
      * The rule's name.
      */
-    name: Name
+    name: string
     /**
      * The names of the rules which this rule depends on.
      */
     dependencies: string[]
+    /**
+     * The default configuration for this rule.
+     */
+    defaultConfig?: Config
     /**
      * The lazily-loaded initial state of the rule.
      */
@@ -36,7 +41,7 @@ export interface RuleModule<
     /**
      * Creates visitors that are called while traversing the tab abstract syntax tree (AST) and that return a state-reducer which is used to update the rule's state.
      */
-    createVisitors(context: RuleContext<StateValue>): {[selector:string]: RuleVisitor}
+    createVisitors(context: RuleContext<StateValue, Config>): {[selector:string]: RuleVisitor}
 }
 
 // credit: https://github.com/eslint/eslint/blob/main/lib/linter/rules.js
