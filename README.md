@@ -3,7 +3,7 @@ A configurable, rule-based state manager for the [tab-edit](https://github.com/t
 
 This method of state management makes it makes it possible to more easily implement features such as linting or MusicXML generation as a set of pluggable and configurable "rules" on the tab syntax tree state. 
 
-As the rule-based system is pluggable, and the default configuration for each rule can be very easily changed to alter it's behaviour (just like an "./eslintrc" file), it would be very easy for users to add completely new functionality to the system, or customize how existing functionality works
+As this rule-based system is pluggable and the default configuration for each rule can be very easily changed to alter it's behaviour (just like an "./eslintrc" file), it would be very easy for users to add completely new functionality to the system, or customize how existing functionality works
 
 This high customizability gives users the ability to customize how the tablature text is linted, or even customize how the tablature text is converted to the MusicXML format (by changing the default configuration of the rules that produce the final MusicXML state). This is a very important feature as ascii tablature is a highly unstandardized format
 
