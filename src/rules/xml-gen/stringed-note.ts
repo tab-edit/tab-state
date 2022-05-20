@@ -1,14 +1,20 @@
 import { RuleModule } from "../../rules";
 
 // TODO: implement
+/**
+ * This generates the xml information for a note
+ */
 export type GuitarNoteState = {
     naming: Map<number, string>
     numberingRel2Abs: Map<number, number>
 }
 
 export default {
-    name: "guitar-note",
-    dependencies: ["measure-line-number"],
+    meta: {
+        name: "stringed-note",
+        dependencies: ["stringed-pitch"],
+        accurateAt: "Fret:entry"
+    },
     initialState: () => ({
         naming: new Map(),
         numberingRel2Abs: new Map()
@@ -19,14 +25,7 @@ export default {
                 context.setState(() => {
                     
                 })
-            },
-            LineNaming: function() {
-                // reset line naming
-                context.setState(() => ({
-                    naming: new Map<number, string>(),
-                    numberingRel2Abs: new Map<number, number>()
-                }));
-            },
+            }
         }
     }
 } as RuleModule<GuitarNoteState>

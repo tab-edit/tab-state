@@ -92,12 +92,21 @@ export default class NodeEventGenerator {
         return deferredEmissions;
     }
 
+    static TRAVERSAL_START_EVENT_NAME = "onTraversalStart";
+    static TRAVERSAL_END_EVENT_NAME = "onTraversalEnd";
+    emitOnTraversalStartEvent(node: ResolvedASTNode) {
+        emitInRuleOrder(this.emitter.generateDeferredEmissions(NodeEventGenerator.TRAVERSAL_START_EVENT_NAME, node));
+    }
+    emitOnTraversalEndEvent(node: ResolvedASTNode) {
+        emitInRuleOrder(this.emitter.generateDeferredEmissions(NodeEventGenerator.TRAVERSAL_END_EVENT_NAME, node));
+    }
+
     /**
      * Emits an event of entering AST node.
      */
-    enterNode(node: ResolvedASTNode, parent: ResolvedASTNode): void {
+    enterNode(node: ResolvedASTNode): void {
         if (parent) {
-            this.currentAncestry.unshift(parent);
+            this.currentAncestry.unshift(node.parent());
         }
         // sort the delayed emissions by rule
         emitInRuleOrder(this.applySelectors(node, false));

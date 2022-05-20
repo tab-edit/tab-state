@@ -1,6 +1,6 @@
 import { RuleContext, RuleModule } from "../../rules";
 import PriorityQueue from "ts-priority-queue";
-import { computeMeasureAnchorRange, getPositionDescriptor, getTextFromNode, MeasureAnchorStyle } from "../utils/util-functions";
+import { computeMeasureAnchorRange, getPositionDescriptor, getTextFromNode, MeasureAnchorStyle } from "../utils/node-util-functions";
 import { ResolvedASTNode, SourceSyntaxNodeTypes } from "tab-ast";
 
 export type RepeatState = {
@@ -25,8 +25,11 @@ type RepeatDescriptor = { start:number, end:number, count: number, node: Resolve
  * be accurate and up to date by the start of each measure.
  */
 export default {
-    name: "overhead-repeats",
-    dependencies: [],
+    meta: {
+        name: "overhead-repeats",
+        dependencies: [],
+        accurateAt: "Measure:entry"
+    },
     initialState: () => ({
         stack: [],
         measureMarking: "none"
@@ -93,7 +96,7 @@ export default {
                     if (!repeatEnded) break;
                     context.setState(state => {
                         state.stack.pop();
-                        state.measureMarking = state.measureMarking==="start" ? "start-end" : "start";
+                        state.measureMarking = state.measureMarking==="start" ? "start-end" : "end";
                         return state;
                     })
                 }
@@ -112,7 +115,7 @@ export default {
                 repeatStack = context.getState().stack; // get most up-to-date stack (state might've been updated earlier)
                 let mostRecentOngoingRepeat = repeatStack[repeatStack.length-1];
 
-                let repeatImproperlyNested: boolean;
+                let repeatImproperlyNested: boolean, addStartMarking: boolean;
                 while (orderedRepeats.peek().start < measureRange.end) {
                     repeatImproperlyNested = orderedRepeats.peek().end > mostRecentOngoingRepeat.end;
                     if (repeatImproperlyNested || !repeatStarted(orderedRepeats.peek())) {
@@ -120,9 +123,11 @@ export default {
                         continue;
                     }
                     repeatStack.push(orderedRepeats.dequeue());
+                    addStartMarking = true;
                 }
                 context.setState((state) => {
                     state.stack = repeatStack;
+                    if (addStartMarking) state.measureMarking = state.measureMarking==="end" ? "start-end" : "start";
                     return state;
                 });
             }

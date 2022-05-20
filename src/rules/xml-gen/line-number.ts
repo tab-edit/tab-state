@@ -1,6 +1,6 @@
 import { SourceSyntaxNodeTypes } from "tab-ast";
 import { RuleModule } from "../../rules";
-import { getPositionDescriptor, getTextFromNode } from "../utils/util-functions";
+import { getPositionDescriptor, getTextFromNode } from "../utils/node-util-functions";
 
 export type LineNumberState = {
     doclineToMlineNum: Map<number, number>,
@@ -8,8 +8,11 @@ export type LineNumberState = {
 }
 
 export default {
-    name: "line-number",
-    dependencies: [],
+    meta: {
+        name: "line-number",
+        dependencies: [],
+        accurateAt: "Measure:entry"
+    },
     initialState: () => ({
         doclineToMlineNum: new Map<number, number>(),
         mlineToDoclineNum: new Map<number, number>()

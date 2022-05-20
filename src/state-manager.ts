@@ -34,9 +34,9 @@ export class StateManager {
      * @param initialState a function that returns the initial state value
      * @returns the tag used to access this state
      */
-    public initSharedState(ruleId:string, config: any, initialState: () => any, ignoreErrorOnDuplicateInit: boolean = false): string {
+    public initSharedState(ruleId:string, config: any, initialState: (config:any) => any, ignoreErrorOnDuplicateInit: boolean = false): string {
         const state: State = {
-            value: initialState(),
+            value: initialState(config),
             config,
             lastUpdate: null
         }
@@ -57,9 +57,9 @@ export class StateManager {
      * @param initialState a function that returns the initial state value
      * @returns the tag used to access the initialized state
      */
-    public initState(ruleId:string, groupId:string, config: any, initialState: () => any, ignoreErrorOnDuplicateInit: boolean = false) {
+    public initState(ruleId:string, groupId:string, config: any, initialState: (config:any) => any, ignoreErrorOnDuplicateInit: boolean = false) {
         const state: State = {
-            value: initialState(),
+            value: initialState(config),
             config,
             lastUpdate: null
         }

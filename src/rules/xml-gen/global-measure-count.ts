@@ -4,8 +4,11 @@ export type MeasureCountState = {
 }
 
 export default {
-    name: "measure-count",
-    dependencies: [],
+    meta: {
+        name: "global-measure-count",
+        dependencies: [],
+        accurateAt: "Measure:entry"
+    },
     initialState: () => ({
         count: 0
     }),

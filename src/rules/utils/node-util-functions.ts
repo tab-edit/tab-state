@@ -18,6 +18,21 @@ export function getTextFromNode(node: ResolvedASTNode, context: RuleContext) {
     return text;
 }
 
+export function stringToRegex(str: string) {
+    str = str.trim();
+    let exp = str;
+    let flags:string = "";
+    try {
+        if (/^\/.*\/[a-zA-Z]*$/.test(str)) {
+            const flagsMatch = str.match(/(?<=\/)[a-zA-Z]+$/g);
+            exp = str.match(/(?<=^\/).*(?=\/[a-zA-Z]*$)/)![0] || ""
+            if (flagsMatch) flags = flagsMatch[0].trim();
+        }
+        return new RegExp(exp, flags);
+    } catch (e) {
+        throw e;
+    }
+}
 
 /**
  * Specifies which method is used to compute a single, continuous, column-wise range

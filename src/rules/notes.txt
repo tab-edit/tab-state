@@ -6,3 +6,11 @@ state must have the correct value corresponding to the distance of the .Note you
 be the distance value for the Note you just explored, and not the distance for a previous Note (i.e. a note in a different sound) that was explored prior, or the distance for the next .Note that is to be explored.
 
 This makes it so that other stateunits can consistently query your stateunit's current value and be assured that it is accurate.
+
+Maybe we can make it so that rules aren't emitted right away for every node we visit, but
+we only emit rules if they are one of the exposed rules of a group or they are requested by an external stateunit
+using the context.requestExternalState() method. This makes it so we save computation for
+rules that are placed in the dependency list of a state but are eventually not requested by the state.
+
+each state contains a list of DefferedEmission calls, and whenever we request the state, only then do we emit the
+DeferredEmission calls that are associated with the requested state.

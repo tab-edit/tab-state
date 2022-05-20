@@ -17,7 +17,7 @@ type Config = {
 }
 
 // TODO: generateState should be called with an EditorState as a parameter instead of TabTree, i think
-function generateState(editorState:EditorState, configuredGroups: , providedConfig: Config) {
+function generateState(editorState:EditorState, configuredGroups: {[groupId: string]: Group}, providedConfig: Config) {
     const stateManager = new StateManager();
     const emitter = new SafeEmitter();
 
@@ -59,6 +59,10 @@ function generateState(editorState:EditorState, configuredGroups: , providedConf
             if (!rule) throw new Error(`The rule ${ruleId}, declared as part of the group ${groupId}, could not be found.`)
             const defaultConfigOverridden = providedConfig[groupId] && (ruleId in providedConfig[groupId]);
 
+            // TODO: maybe include both default and provided config (because we can't deep-copy provided config
+            // it is helpful so we can fallback on default config when the provided config doesn't have what we have.)
+            // shallow-merging is not really that beneficial. this guarantees that we always have a valid config value to
+            // fall back on, even if provided config is present but invalid
             let stateTag:string;
             if (defaultConfigOverridden) {
                 const config = {...(rule.defaultConfig || {}), ...providedConfig[groupId][ruleId]}
@@ -67,6 +71,7 @@ function generateState(editorState:EditorState, configuredGroups: , providedConf
                 const config = {...(rule.defaultConfig || {}), ...(providedConfig.default[ruleId] || {})}
                 stateTag = stateManager.initSharedState(ruleId, config, rule.initialState, true);
             }
+
             const {state} = stateManager.resolveState(stateTag);
 
             const ruleContext:RuleContext = Object.freeze(
@@ -85,7 +90,7 @@ function generateState(editorState:EditorState, configuredGroups: , providedConf
                         },
                         requestExternalState(requestedRuleId:string) {
                             if (!(requestedRuleId in group.rules)) throw new Error(`Cannot retrieve requested rule state '${requestedRuleId}'. Requested rule is not a part of the group '${groupId}' from which it was requested.`)
-                            if (!(requestedRuleId in rule.dependencies)) throw new Error(`Cannot retrieve requested rule state '${requestedRuleId}'. Requested rule is not declared as a dependency of the requesting rule '${ruleId}'.`)
+                            if (!(requestedRuleId in rule.meta.dependencies)) throw new Error(`Cannot retrieve requested rule state '${requestedRuleId}'. Requested rule is not declared as a dependency of the requesting rule '${ruleId}'.`)
 
                             const externalStateTag = stateManager.resolveStateTag(requestedRuleId, groupId)
                             if (!externalStateTag) throw new Error(`Error when trying to retrieve external state ${requestedRuleId} from group ${groupId}.`);
@@ -120,18 +125,23 @@ function generateState(editorState:EditorState, configuredGroups: , providedConf
     })
 
     const eventGenerator = new NodeEventGenerator(emitter);
+    eventGenerator.emitOnTraversalStartEvent(currentTraversalInfo.node);
     nodeQueue.forEach(traversalInfo => {
         currentTraversalInfo = traversalInfo;
         try {
             if (traversalInfo.isEntering) {
-                eventGenerator.enterNode(traversalInfo.node, traversalInfo.node.parent());
+                eventGenerator.enterNode(currentTraversalInfo.node);
             } else {
-                eventGenerator.leaveNode(traversalInfo.node);
+                eventGenerator.leaveNode(currentTraversalInfo.node);
             }
         } catch (err) {
             throw err;
         }
-    })
+    });
+    eventGenerator.emitOnTraversalEndEvent(currentTraversalInfo.node);
+    
+    
+    // TODO: return a state object containing only the rule states that were exported by each configured group
 }
 
 function createRuleListeners(rule: RuleModule, ruleContext:RuleContext, stateTag:string) {

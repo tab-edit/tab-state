@@ -1,7 +1,7 @@
 import { Text } from "@codemirror/text";
 import { SourceSyntaxNodeTypes } from "tab-ast";
-import { RuleModule } from "../../rules";
-import { getPositionDescriptor } from "../utils/util-functions";
+import { RuleContext, RuleModule } from "../../rules";
+import { getPositionDescriptor } from "../utils/node-util-functions";
 
 export type NoteDistanceState = {
     toMeasureStart: number,
@@ -9,24 +9,27 @@ export type NoteDistanceState = {
 }
 
 export default {
-    name: "note-distance",
-    dependencies: [],
+    meta: {
+        name: "note-distance",
+        dependencies: [],
+        accurateAt: "Sound:entry"
+    },
     initialState: () => ({
         toMeasureStart: 0,
         toSound: 0
     }),
     createVisitors: function(context) {
-        let measureStartCol: {[lineNum:number]: number} = {}
-        let prevSoundStartCol: {[lineNum:number]: number} = {}
+        let measureStart: {[lineNum:number]: number} = {}
+        let prevSoundStart: {[lineNum:number]: number} = {}
         return {
             Measure: function(node) {
-                measureStartCol = {};
+                measureStart = {};
                 const measurelines = node.sourceSyntaxNodes()[SourceSyntaxNodeTypes.MeasureLine];
                 measurelines.map((mline) => {
                     const pos = getPositionDescriptor(mline.from, context);
-                    measureStartCol[pos.line] = pos.col;
+                    measureStart[pos.line] = mline.from;
                 })
-                prevSoundStartCol = measureStartCol
+                prevSoundStart = measureStart
             },
             Sound: function(node) {
                 let distanceToPrevSound: number;
@@ -39,11 +42,11 @@ export default {
                     if (idx%2!==0) return;
                     const posDesc = getPositionDescriptor(pos, context);
 
-                    const distToPrevSoundTmp = posDesc.col-prevSoundStartCol[posDesc.line];
+                    const distToPrevSoundTmp = getNonWhitespaceDistanceByCol(prevSoundStart[posDesc.line], pos, context)
                     distanceToPrevSound = distanceToPrevSound ? Math.max(distanceToPrevSound, distToPrevSoundTmp) : distToPrevSoundTmp;
-                    prevSoundStartCol[posDesc.line] = posDesc.col;
+                    prevSoundStart[posDesc.line] = pos;
 
-                    const distToMeasureStartTmp = posDesc.col-measureStartCol[posDesc.line];
+                    const distToMeasureStartTmp = getNonWhitespaceDistanceByCol(measureStart[posDesc.line], pos, context);
                     distanceToMeasureStart = distanceToMeasureStart ? Math.max(distanceToMeasureStart, distToMeasureStartTmp) : distToMeasureStartTmp;
                 })
 
@@ -56,3 +59,7 @@ export default {
         }
     }
 } as RuleModule<NoteDistanceState>;
+
+function getNonWhitespaceDistanceByCol(startIdx:number, endIdx:number, context:RuleContext) {
+    return context.getSourceText().slice(startIdx, endIdx).toString().replace(/\s+/g, '').length;
+}

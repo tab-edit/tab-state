@@ -3,11 +3,11 @@ import LazyLoadingRuleMap from "./utils/lazy-loading-rule-map";
 import deasync from "deasync";
 
 export const builtInRules = new LazyLoadingRuleMap(Object.entries({
-    "line-naming":      () => sync(import("./xml-gen/line-naming")),
-    "line-number":      () => sync(import("./xml-gen/line-number")),
-    "note-distance":    () => sync(import("./xml-gen/note-distance")),
-    "measure-count":    () => sync(import("./xml-gen/measure-count")),
-    "overhead-repeats":          () => sync(import("./xml-gen/overhead-repeats"))
+    "explicit-line-name":   () => sync(import("./xml-gen/line-naming/explicit-line-name")),
+    "line-number":          () => sync(import("./xml-gen/line-number")),
+    "note-distance":        () => sync(import("./xml-gen/note-distance")),
+    "measure-count":        () => sync(import("./xml-gen/global-measure-count")),
+    "overhead-repeats":     () => sync(import("./xml-gen/overhead-repeats"))
 }));
 export default builtInRules;
 
