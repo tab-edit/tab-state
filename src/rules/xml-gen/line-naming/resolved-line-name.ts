@@ -4,7 +4,6 @@
  * the configuration would include a mapping of default names for each line when no explicit linename is provided. this would be grouped by instrument
  */
 
-import { config } from "process"
 import { SourceSyntaxNodeTypes } from "tab-ast"
 import { RuleModule } from "../../../rules"
 import { getPositionDescriptor } from "../../utils/node-util-functions"
@@ -32,7 +31,7 @@ export type LineNamingConfig = {
 export default {
     meta: {
         name: "resolved-line-name",
-        dependencies: ["explicit-line-name", "instrument-type"],
+        dependencies: ["explicit-line-name", "instrument-type", "line-number"],
         accurateAt: "LineNaming:exit"
     },
     initialState: () => ({}),
