@@ -7,4 +7,7 @@ As this rule-based system is pluggable and the default configuration for each ru
 
 This high customizability gives users the ability to customize how the tablature text is linted for example, or even customize how the tablature text is converted to the MusicXML format (by changing the default configuration of the rules that produce the final MusicXML state). This is a very important feature as ascii tablature is a highly unstandardized format
 
-The design of this system is inspired by the open-source [eslint](https://github.com/eslint/eslint) project.
+The design of this system is inspired by the open-source [eslint](https://github.com/eslint/eslint) project. 
+
+## Contribution welcome
+Feel free to contribute to the project if you would like to! There are definitely a bunch of rules that need to be written to make the system functional, so this might take some time :)
