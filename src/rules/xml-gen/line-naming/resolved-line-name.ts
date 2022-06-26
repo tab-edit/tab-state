@@ -7,7 +7,7 @@
 import { SourceSyntaxNodeTypes } from "tab-ast"
 import { RuleModule } from "../../../rules"
 import { getPositionDescriptor } from "../../utils/node-util-functions"
-import { InstrumentTypeState } from "../instrument-type"
+import { InstrumentTypeState } from "../instrument-type/resolved-instrument-type"
 import { LineNumberState } from "../line-number"
 import { ExplicitLineNamingState } from "./explicit-line-name"
 
@@ -87,7 +87,7 @@ export default {
 
 function getDefaultLineNames() {
     return {
-        "guitar": {
+        "stringed::guitar": {
             1: "E4",
             2: "B3",
             3: "G3",
@@ -95,7 +95,7 @@ function getDefaultLineNames() {
             5: "A2",
             6: "E2"
         },
-        "bass": {
+        "stringed::bass": {
             1: "E3",
             2: "B2",
             3: "G2",

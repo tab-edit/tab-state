@@ -22,6 +22,9 @@ export type ExplicitLineNamingConfig = {
      * 
      * TODO: check provided config for a preprocessor match first before checking default config.
      *      This requires that you separate default and provided config; don't merge them as is currently the case.
+     *      This way, the user doesn't have to define preprocessors for every instrument if they decide to change the 
+     *      preprocessor for just one instrument. (currently they have to do this as because of the way the provided and the default config are merged,
+     *      all info in default config is lost upon merging with provided config.)
      */
     preprocessors: {
         [instruments:string]: {

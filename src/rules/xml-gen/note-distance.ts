@@ -4,7 +4,7 @@ import { RuleContext, RuleModule } from "../../rules";
 import { getPositionDescriptor } from "../utils/node-util-functions";
 
 export type NoteDistanceState = {
-    toMeasureStart: number,
+    toMeasure: number,
     toSound: number
 }
 
@@ -15,7 +15,7 @@ export default {
         accurateAt: "Sound:entry"
     },
     initialState: () => ({
-        toMeasureStart: 0,
+        toMeasure: 0,
         toSound: 0
     }),
     createVisitors: function(context) {
@@ -51,7 +51,7 @@ export default {
                 })
 
                 context.setState((state) => {
-                    state.toMeasureStart = distanceToMeasureStart;
+                    state.toMeasure = distanceToMeasureStart;
                     state.toSound = distanceToPrevSound;
                     return state;
                 })

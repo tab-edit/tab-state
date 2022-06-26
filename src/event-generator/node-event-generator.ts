@@ -1,5 +1,6 @@
 // credit: https://github.com/eslint/eslint/blob/90a5b6b4aeff7343783f85418c683f2c9901ab07/lib/linter/node-event-generator.js
 import { ResolvedASTNode } from "tab-ast"
+import { extractRuleIdFromStateTag } from "../state-manager";
 import { ASTSelector, compareSpecificity, matches, parseSelector } from "./ast-selector";
 import SafeEmitter, { DeferredEmission } from "./safe-emitter";
 
@@ -125,7 +126,8 @@ export default class NodeEventGenerator {
 function emitInRuleOrder(deferredEmissions: DeferredEmission[]) {
     const groupedDeferredEmissions:{[group:string]: DeferredEmission[]} = {};
     deferredEmissions.forEach(emission => {
-        if (emission.eventGroup in groupedDeferredEmissions) groupedDeferredEmissions[emission.eventGroup].push(emission);
+        const ruleId = extractRuleIdFromStateTag(emission.eventGroup)!;
+        if (ruleId in groupedDeferredEmissions) groupedDeferredEmissions[ruleId].push(emission);
         else groupedDeferredEmissions[emission.eventGroup] = [emission];
     })
 

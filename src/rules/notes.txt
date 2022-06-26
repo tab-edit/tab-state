@@ -14,3 +14,14 @@ rules that are placed in the dependency list of a state but are eventually not r
 
 each state contains a list of DefferedEmission calls, and whenever we request the state, only then do we emit the
 DeferredEmission calls that are associated with the requested state.
+
+Also, think about how this will work with the rule aggregator for the group (rule reducer). How could it be possible
+to provide the accurate state for the rule to the rule aggregator when we perhaps never updated teh state because
+it was never requested. We should maybe update how the rule aggregator works so we know the actual rules
+that are necessarily being aggregated. maybe make it so that the aggregator itself is not a reducer, but
+the aggregator returns a reducer for the final aggregated state. the aggregator is only given the rule names
+so when they return the aggregator for that rule, we know that we should update that rule. or maybe something similar
+
+
+instrument of the same instrument group (e.g. the group "stringed") should have the same syntax for measure components (i think)
+so guitar and bass should have same measure component syntax (i think this is the best apporach)

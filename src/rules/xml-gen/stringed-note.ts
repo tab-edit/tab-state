@@ -5,8 +5,6 @@ import { RuleModule } from "../../rules";
  * This generates the xml information for a note
  */
 export type GuitarNoteState = {
-    naming: Map<number, string>
-    numberingRel2Abs: Map<number, number>
 }
 
 export default {

@@ -4,8 +4,7 @@ export type State<
     StateConfig = any
 > = {
     value: StateValue,
-    config: StateConfig,
-    lastUpdate: {nodeHash: string, type: VisitType} | null
+    config: StateConfig
 }
 
 /**
@@ -37,8 +36,7 @@ export class StateManager {
     public initSharedState(ruleId:string, config: any, initialState: (config:any) => any, ignoreErrorOnDuplicateInit: boolean = false): string {
         const state: State = {
             value: initialState(config),
-            config,
-            lastUpdate: null
+            config
         }
         const stateTag = this.generateStateTag(ruleId);
         if (ruleId in this.rootState.shared) {
@@ -60,8 +58,7 @@ export class StateManager {
     public initState(ruleId:string, groupId:string, config: any, initialState: (config:any) => any, ignoreErrorOnDuplicateInit: boolean = false) {
         const state: State = {
             value: initialState(config),
-            config,
-            lastUpdate: null
+            config
         }
         const stateTag = this.generateStateTag(ruleId, groupId);
         if (groupId in this.rootState && ruleId in this.rootState[groupId]) {
@@ -96,9 +93,14 @@ export class StateManager {
         }
         return undefined;
     }
-    
+
     private generateStateTag(ruleId:string, groupId?:string) {
         if (!groupId) return `${ruleId}@shared`;
         return `${ruleId}@group:${groupId}`;
     }
 }
+
+export function extractRuleIdFromStateTag(stateTag:string): string | undefined {
+    return stateTag.includes("@") ? stateTag.split("@")[0] : undefined;
+}
+    
